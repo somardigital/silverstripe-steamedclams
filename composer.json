@@ -13,14 +13,14 @@
     }
   ],
   "require": {
-    "silverstripe/framework": "^4"
+    "silverstripe/framework": "^5"
   },
   "suggest": {
     "silverstripe/queuedjobs": "For allowing ClamAV 'missed files' scan to be run from a queued job. Otherwise you can run the tasks manually or via cronjob."
   },
   "extra": {
     "branch-alias": {
-      "dev-master": "3.0.x-dev"
+      "dev-master": "4.0.x-dev"
     },
     "expose": [
       "client/css",
@@ -31,6 +31,12 @@
     "psr-4": {
       "Symbiote\\SteamedClams\\": "src/",
       "Symbiote\\SteamedClams\\Tests\\": "tests/"
+    }
+  },
+  "config": {
+    "allow-plugins": {
+      "composer/installers": true,
+      "silverstripe/vendor-plugin": true
     }
   }
 }
