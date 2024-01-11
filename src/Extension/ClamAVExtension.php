@@ -166,11 +166,9 @@ class ClamAVExtension extends DataExtension
         if ($this->owner->isPublished()) {
             return PUBLIC_PATH . $this->owner->File->getURL();
         } else {
-            $fileName = $this->owner->File->getFilename();
-
             return ASSETS_PATH . '/' .
                 Config::inst()->get(ProtectedAssetAdapter::class, 'secure_folder')
-                . '/' . $fileName;
+                . $this->owner->File->getSourceURL();
         }
     }
 
