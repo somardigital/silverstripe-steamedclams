@@ -2,14 +2,15 @@
 
 namespace Symbiote\SteamedClams\Extension;
 
+use SilverStripe\Core\Extension;
+use SilverStripe\Core\Validation\ValidationResult;
+use SilverStripe\Core\Validation\ValidationException;
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Flysystem\ProtectedAssetAdapter;
 use SilverStripe\Assets\Folder;
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\ORM\DataExtension;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
-use SilverStripe\ORM\ValidationResult;
 use Symbiote\SteamedClams\ClamAV;
 use Symbiote\SteamedClams\Model\ClamAVScan;
 use SilverStripe\Core\Config\Config;
@@ -21,7 +22,7 @@ use Silverstripe\SiteConfig\SiteConfig;
  * @property File|ClamAVExtension $owner
  * @method DataList|ClamAVScan[] ClamAVScans()
  */
-class ClamAVExtension extends DataExtension
+class ClamAVExtension extends Extension
 {
     /**
      * @var array
@@ -41,16 +42,15 @@ class ClamAVExtension extends DataExtension
     //public function updateCMSFields(FieldList $fields) {
     // todo(Jake): Show 'ClamAVScans' on AssetAdmin/File level.
     //}
-
     /**
      * This is called within `File::write()` but before `File::onBeforeWrite()`.
      *
      * @param ValidationResult $validationResult
      *
      * @return null
-     * @throws \SilverStripe\ORM\ValidationException
+     * @throws ValidationException
      */
-    public function validate(ValidationResult $validationResult)
+    public function updateValidate(ValidationResult $validationResult)
     {
         // If its a new file, scan it.
         $doVirusScan = ($this->owner->ID == 0);
@@ -58,7 +58,7 @@ class ClamAVExtension extends DataExtension
         // Support VersionedFiles module
         // ie. If file has been replaced, scan it.
         $changedFields = $this->owner->getChangedFields(true, DataObject::CHANGE_VALUE);
-        $currentVersionIDChanged = (isset($changedFields['CurrentVersionID'])) ? $changedFields['CurrentVersionID'] : [];
+        $currentVersionIDChanged = $changedFields['CurrentVersionID'] ?? [];
 
         if ($currentVersionIDChanged && $currentVersionIDChanged['before'] != $currentVersionIDChanged['after']) {
             $doVirusScan = true;
@@ -92,7 +92,7 @@ class ClamAVExtension extends DataExtension
 
         $config = SiteConfig::current_site_config();
 
-        $validationMessage = ($config->ValidationMessage) ? $config->ValidationMessage : 'A virus was detected.';
+        $validationMessage = $config->ValidationMessage ?: 'A virus was detected.';
 
         $validationResult->addError(
             _t(
@@ -173,7 +173,7 @@ class ClamAVExtension extends DataExtension
     }
 
     /**
-     * @throws \SilverStripe\ORM\ValidationException
+     * @throws ValidationException
      */
     public function onAfterDelete()
     {

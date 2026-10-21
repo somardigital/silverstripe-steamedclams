@@ -2,6 +2,7 @@
 
 namespace Symbiote\SteamedClams\Model;
 
+use SilverStripe\Core\Validation\ValidationException;
 use LogicException;
 use Page;
 use SilverStripe\Admin\LeftAndMain;
@@ -9,15 +10,12 @@ use SilverStripe\Assets\File;
 use SilverStripe\CMS\Controllers\ContentController;
 use SilverStripe\Control\Controller;
 use SilverStripe\Control\Director;
-use SilverStripe\Core\Convert;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\NumericField;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBHTMLText;
-use SilverStripe\ORM\ValidationException;
 use SilverStripe\Security\Member;
 use SilverStripe\Security\Security;
-use Symbiote\SteamedClams\Admin\ClamAVAdmin;
 use Symbiote\SteamedClams\Jobs\ClamAVScanJob;
 
 /**
@@ -188,7 +186,7 @@ class ClamAVScan extends DataObject
     private static $default_sort = 'ID DESC';
 
     /**
-     * @param \Symbiote\SteamedClams\Model\ClamAVScan $record
+     * @param ClamAVScan $record
      *
      * @return int|string
      */
@@ -202,7 +200,7 @@ class ClamAVScan extends DataObject
     }
 
     /**
-     * @return int|\SilverStripe\ORM\FieldType\DBHTMLText
+     * @return int|DBHTMLText
      */
     public function getFileIDCMSLink()
     {
@@ -225,7 +223,7 @@ class ClamAVScan extends DataObject
     public function requireDefaultRecords()
     {
         parent::requireDefaultRecords();
-        if ($this->class !== __CLASS__) {
+        if (static::class !== self::class) {
             return;
         }
         if (class_exists(ClamAVScanJob::class)) {
@@ -260,7 +258,7 @@ class ClamAVScan extends DataObject
                 'Action'    => ClamAVScan::ACTION_NONE,
                 'FileID'    => $this->FileID,
             ]);
-            $lastScan = $lastScan->sort('ID', 'DESC');
+            $lastScan = $lastScan->sort(['ID' => 'DESC']);
             $lastScan = $lastScan->first();
             if ($lastScan) {
                 // If a scan log exists where the scan failed due to the daemon being
@@ -279,7 +277,7 @@ class ClamAVScan extends DataObject
                 }
             } else {
                 // Store Context URL (where this was created)
-                $controller = (Controller::has_curr()) ? Controller::curr() : null;
+                $controller = Controller::curr() ?? null;
                 if ($controller) {
                     if (!$this->ContextURL) {
                         // Store URL
@@ -296,7 +294,7 @@ class ClamAVScan extends DataObject
                             $page = $controller->data();
                         }
                         if ($controller instanceof LeftAndMain) {
-                            $page = $controller->currentPage();
+                            $page = $controller->currentRecord();
                         }
                         if ($page && $page->exists()) {
                             $this->ContextPageID = $page->ID;
@@ -465,7 +463,7 @@ class ClamAVScan extends DataObject
         $page = $this->ContextPage();
         if ($page && $page->exists() && $page->canEdit()) {
             $link .= ' <a href="' . $page->CMSEditLink() . '">(Edit #' . $page->ID . ')</a>';
-            $html = new DBHTMLText('URLLink');
+            $html = DBHTMLText::create('URLLink');
             $html->setValue($link);
 
             return $html;
@@ -490,26 +488,15 @@ class ClamAVScan extends DataObject
         }
         if (isset($state_messages[$action])) {
             $actionData = $state_messages[$action];
-            switch ($actionData['type']) {
-                case 'bad':
-                    $colour = '#C00';
-                    break;
-
-                case 'warning':
-                    $colour = '#1391DF';
-                    break;
-
-                case 'good':
-                    $colour = '#18BA18';
-                    break;
-
-                default:
-                    throw new LogicException('Invalid type "' . $actionData['type'] . '".');
-                    break;
-            }
+            $colour = match ($actionData['type']) {
+                'bad' => '#C00',
+                'warning' => '#1391DF',
+                'good' => '#18BA18',
+                default => throw new LogicException('Invalid type "' . $actionData['type'] . '".'),
+            };
             $text = $actionData['message'];
         }
-        $html = new DBHTMLText('ActionMessage');
+        $html = DBHTMLText::create('ActionMessage');
         $html->setValue(sprintf(
             '<span style="color: %s;">%s</span>',
             $colour,
@@ -565,7 +552,7 @@ class ClamAVScan extends DataObject
     public function setRawData($value)
     {
         if (is_array($value)) {
-            $value = Convert::array2json($value);
+            $value = json_encode($value);
         }
         $this->setField('RawData', $value);
     }

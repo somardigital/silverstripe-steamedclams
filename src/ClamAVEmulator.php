@@ -2,6 +2,7 @@
 
 namespace Symbiote\SteamedClams;
 
+use ClamdSocketException;
 use LogicException;
 use SilverStripe\Core\Config\Config;
 
@@ -38,26 +39,14 @@ class ClamAVEmulator extends ClamAV
      */
     public function version()
     {
-        $mode = Config::inst()->get(__CLASS__, 'mode');
-        $emulateVersion = Config::inst()->get(__CLASS__, 'emulate_version');
-        switch ($mode) {
-            case self::MODE_UNKNOWN:
-                return $this->modeUnknown();
-                break;
-
-            case self::MODE_NO_VIRUS:
-            case self::MODE_HAS_VIRUS:
-                return $emulateVersion;
-                break;
-
-            case self::MODE_OFFLINE:
-                return $this->modeOffline();
-                break;
-
-            default:
-                return $this->modeInvalid();
-                break;
-        }
+        $mode = Config::inst()->get(self::class, 'mode');
+        $emulateVersion = Config::inst()->get(self::class, 'emulate_version');
+        return match ($mode) {
+            self::MODE_UNKNOWN => $this->modeUnknown(),
+            self::MODE_NO_VIRUS, self::MODE_HAS_VIRUS => $emulateVersion,
+            self::MODE_OFFLINE => $this->modeOffline(),
+            default => $this->modeInvalid(),
+        };
     }
 
     /**
@@ -65,44 +54,30 @@ class ClamAVEmulator extends ClamAV
      */
     protected function fileScan($filepath)
     {
-        $mode = Config::inst()->get(__CLASS__, 'mode');
-        switch ($mode) {
-            case self::MODE_UNKNOWN:
-                return $this->modeUnknown();
-                break;
-
-            case self::MODE_NO_VIRUS:
-                return array(
-                    'file'  => $filepath,
-                    'stats' => 'OK',
-                );
-                break;
-
-            case self::MODE_HAS_VIRUS:
-                return array(
-                    'file'  => $filepath,
-                    'stats' => 'Eicar-Test-Signature FOUND',
-                );
-                break;
-
-            case self::MODE_OFFLINE:
-                return $this->modeOffline();
-                break;
-
-            default:
-                return $this->modeInvalid();
-                break;
-        }
+        $mode = Config::inst()->get(self::class, 'mode');
+        return match ($mode) {
+            self::MODE_UNKNOWN => $this->modeUnknown(),
+            self::MODE_NO_VIRUS => [
+                'file'  => $filepath,
+                'stats' => 'OK',
+            ],
+            self::MODE_HAS_VIRUS => [
+                'file'  => $filepath,
+                'stats' => 'Eicar-Test-Signature FOUND',
+            ],
+            self::MODE_OFFLINE => $this->modeOffline(),
+            default => $this->modeInvalid(),
+        };
     }
 
-    protected function modeUnknown()
+    protected function modeUnknown(): never
     {
-        throw new LogicException('Must configure ' . __CLASS__ . '::mode config');
+        throw new LogicException('Must configure ' . self::class . '::mode config');
     }
 
     protected function modeOffline()
     {
-        $this->last_exception = new \ClamdSocketException(
+        $this->last_exception = new ClamdSocketException(
             '*EMULATE MODE* No such file or directory "/not-real-root-folder/run/clamav/clamd.ctl"',
             2
         );
@@ -110,11 +85,11 @@ class ClamAVEmulator extends ClamAV
         return self::OFFLINE;
     }
 
-    protected function modeInvalid()
+    protected function modeInvalid(): never
     {
         throw new LogicException(
-            'Invalid "mode" config with value "' . Config::inst()->get(__CLASS__, 'mode')
-            . '". Use constants provided in ' . __CLASS__ . ' class.'
+            'Invalid "mode" config with value "' . Config::inst()->get(self::class, 'mode')
+            . '". Use constants provided in ' . self::class . ' class.'
         );
     }
 }

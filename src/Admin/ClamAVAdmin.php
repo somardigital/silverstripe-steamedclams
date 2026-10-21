@@ -44,7 +44,7 @@ class ClamAVAdmin extends ModelAdmin
     /**
      * @var string
      */
-    private static $menu_icon = 'vendor/symbiote/silverstripe-steamedclams/client/images/clamav_icon.png';
+    private static $menu_icon = 'symbiote/silverstripe-steamedclams:client/images/clamav_icon.png';
 
     /**
      * @var array
@@ -55,7 +55,7 @@ class ClamAVAdmin extends ModelAdmin
 
     /**
      * Unable to directly link to a File in the AssetAdmin, so set
-     * the required FileID via `setCurrentPageID` and redirect.
+     * the required FileID via `setCurrentRecordID` and redirect.
      *
      * @return HTTPResponse|string
      */
@@ -70,7 +70,7 @@ class ClamAVAdmin extends ModelAdmin
         if (!$assetAdmin->canView()) {
             return $this->redirect($this->Link());
         }
-        $assetAdmin->setCurrentPageID($id);
+        $assetAdmin->setCurrentRecordID((int) $id);
 
         //Session::set($assetAdmin->class.".currentPage", (int)$id);
         return $this->redirect(
@@ -81,7 +81,7 @@ class ClamAVAdmin extends ModelAdmin
     public function getEditForm($id = null, $fields = null)
     {
         $self = &$this;
-        $this->beforeExtending('updateEditForm', function ($form) use ($self) {
+        $this->beforeExtending('updateEditForm', function ($form) use ($self): void {
             Requirements::css('symbiote/silverstripe-steamedclams:client/css/ClamAVCMS.css');
 
             $fields = $form->Fields();

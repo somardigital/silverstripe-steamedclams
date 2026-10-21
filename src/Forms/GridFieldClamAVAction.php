@@ -201,7 +201,7 @@ class GridFieldClamAVAction implements GridField_ColumnProvider, GridField_Actio
      */
     protected function notify($message)
     {
-        $controller = Controller::has_curr() ? Controller::curr() : null;
+        $controller = Controller::curr() ?? null;
         if (!$controller) {
             return;
         }

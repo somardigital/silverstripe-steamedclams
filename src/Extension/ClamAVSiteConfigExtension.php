@@ -2,15 +2,15 @@
 
 namespace Symbiote\SteamedClams\Extension;
 
+use SilverStripe\Core\Extension;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\TextField;
-use SilverStripe\ORM\DataExtension;
 
 /**
  * This extension adds contact information such as 'Phone' and 'Email' as well
  * as 'SocialMediaLinks'
  */
-class ClamAVSiteConfigExtension extends DataExtension
+class ClamAVSiteConfigExtension extends Extension
 {
 
     /**

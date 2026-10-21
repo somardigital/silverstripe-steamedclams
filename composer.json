@@ -13,7 +13,7 @@
     }
   ],
   "require": {
-    "silverstripe/framework": "^5"
+    "silverstripe/framework": "^6"
   },
   "suggest": {
     "silverstripe/queuedjobs": "For allowing ClamAV 'missed files' scan to be run from a queued job. Otherwise you can run the tasks manually or via cronjob."

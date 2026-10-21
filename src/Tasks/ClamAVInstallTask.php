@@ -2,20 +2,22 @@
 
 namespace Symbiote\SteamedClams\Tasks;
 
-
-use SilverStripe\Control\HTTPRequest;
+use Symfony\Component\Console\Input\InputInterface;
+use SilverStripe\PolyExecution\PolyOutput;
+use Symfony\Component\Console\Command\Command;
+use Exception;
 
 class ClamAVInstallTask extends ClamAVBaseTask
 {
     /**
      * @var string
      */
-    protected $title = 'ClamAV Virus Install Task';
+    protected string $title = 'ClamAV Virus Install Task';
 
     /**
      * @var string
      */
-    protected $description = 'Scans all files that haven\'t been scanned yet and aren\'t queued for later scanning.';
+    protected static string $description = 'Scans all files that haven\'t been scanned yet and aren\'t queued for later scanning.';
 
     /**
      * Limit the `File` lists for testing purposes
@@ -23,16 +25,13 @@ class ClamAVInstallTask extends ClamAVBaseTask
     protected $debug_limit = 0;
 
     /**
-     * @param HTTPRequest $request
-     * @param null $job
-     *
-     * @return bool|void
-     * @throws \Exception
+     * @throws Exception
      */
-    public function run($request, $job = null)
+    protected function execute(InputInterface $input, PolyOutput $output): int
     {
-        if (parent::run($request, $job) === false) {
-            return;
+        $result = parent::execute($input, $output);
+        if ($result !== Command::SUCCESS) {
+            return $result;
         }
 
         $this->log('Starting ClamAV install task...');
@@ -48,5 +47,6 @@ class ClamAVInstallTask extends ClamAVBaseTask
         } else {
             $this->log('Finished ClamAV task. No action was required.');
         }
+        return Command::SUCCESS;
     }
 }

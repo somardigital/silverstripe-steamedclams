@@ -2,6 +2,9 @@
 
 namespace Symbiote\SteamedClams\Tasks;
 
+use Symfony\Component\Console\Input\InputInterface;
+use SilverStripe\PolyExecution\PolyOutput;
+use Symfony\Component\Console\Command\Command;
 use Exception;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Convert;
@@ -10,19 +13,13 @@ use SilverStripe\Dev\BuildTask;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DB;
 use Symbiote\SteamedClams\ClamAV;
-use Symbiote\SteamedClams\Jobs\ClamAVScanJob;
 
-class ClamAVBaseTask extends BuildTask
+abstract class ClamAVBaseTask extends BuildTask
 {
     /**
      * @var ClamAV
      */
     protected $clamAV;
-
-    /**
-     * @var ClamAVScanJob
-     */
-    protected $job;
 
     /**
      * Limit the `File` lists for testing purposes
@@ -31,30 +28,29 @@ class ClamAVBaseTask extends BuildTask
      */
     protected $default_limit = 0;
 
-    public function run($request, $job = null)
+    protected function execute(InputInterface $input, PolyOutput $output): int
     {
         // Check if online before starting
         $this->clamAV = Injector::inst()->get(ClamAV::class);
-        $this->job = $job;
         $version = $this->clamAV->version();
         if ($version === ClamAV::OFFLINE) {
             $this->log('ClamAV daemon is offline. Cannot scan.');
 
-            return false;
+            return Command::FAILURE;
         }
 
-        return true;
+        return Command::SUCCESS;
     }
 
     /**
      * @param $messageOrDataObject
      * @param string $type
-     * @param \Exception|null $exception
+     * @param Exception|null $exception
      * @param int $indent
      *
-     * @throws \Exception
+     * @throws Exception
      */
-    protected function log($messageOrDataObject, $type = '', Exception $exception = null, $indent = 0)
+    protected function log($messageOrDataObject, $type = '', ?Exception $exception = null, $indent = 0)
     {
         $message = '';
         for ($i = 0; $i < $indent; ++$i) {
@@ -68,7 +64,7 @@ class ClamAVBaseTask extends BuildTask
             $record = $messageOrDataObject;
             switch ($type) {
                 case 'created':
-                    $message .= 'Added "' . $record->Title . '" (' . $record->class . ') to #' . $record->ID;
+                    $message .= 'Added "' . $record->Title . '" (' . $record->ClassName . ') to #' . $record->ID;
                     break;
 
                 case 'error':
@@ -77,47 +73,47 @@ class ClamAVBaseTask extends BuildTask
 
                 case 'changed':
                 case 'notice':
-                    $message .= 'Changed "' . $record->Title . '" (' . $record->class . ') #' . $record->ID;
+                    $message .= 'Changed "' . $record->Title . '" (' . $record->ClassName . ') #' . $record->ID;
                     break;
 
                 case 'deleted':
-                    $message = 'Deleted "' . $record->Title . '" (' . $record->class . ') #' . $record->ID;
+                    $message = 'Deleted "' . $record->Title . '" (' . $record->ClassName . ') #' . $record->ID;
                     $type = 'created';
                     break;
 
                 // Special Cases for $record
                 case 'published':
-                    $message .= 'Published "' . $record->Title . '" (' . $record->class . ') #' . $record->ID;
+                    $message .= 'Published "' . $record->Title . '" (' . $record->ClassName . ') #' . $record->ID;
                     $type = 'changed';
                     break;
 
                 case 'unpublished':
-                    $message .= 'Unpublished "' . $record->Title . '" (' . $record->class . ') #' . $record->ID;
+                    $message .= 'Unpublished "' . $record->Title . '" (' . $record->ClassName . ') #' . $record->ID;
                     $type = 'changed';
                     break;
 
                 case 'archive':
-                    $message .= 'Archive "' . $record->Title . '" (' . $record->class . ') #' . $record->ID;
+                    $message .= 'Archive "' . $record->Title . '" (' . $record->ClassName . ') #' . $record->ID;
                     $type = 'changed';
                     break;
 
                 case 'delete_error':
-                    $message = 'Unable to delete "' . $record->Title . '" (' . $record->class . ') #' . $record->ID;
+                    $message = 'Unable to delete "' . $record->Title . '" (' . $record->ClassName . ') #' . $record->ID;
                     $type = 'error';
                     break;
 
                 case 'unpublished_error':
-                    $message .= 'Unable to unpublish "' . $record->Title . '" (' . $record->class . ') #' . $record->ID;
+                    $message .= 'Unable to unpublish "' . $record->Title . '" (' . $record->ClassName . ') #' . $record->ID;
                     $type = 'error';
                     break;
 
                 case 'archive_error':
-                    $message .= 'Unable to archive "' . $record->Title . '" (' . $record->class . ') #' . $record->ID;
+                    $message .= 'Unable to archive "' . $record->Title . '" (' . $record->ClassName . ') #' . $record->ID;
                     $type = 'error';
                     break;
 
                 case 'nochange':
-                    $message = 'No changes to "' . $record->Title . '" (' . $record->class . ') #' . $record->ID;
+                    $message = 'No changes to "' . $record->Title . '" (' . $record->ClassName . ') #' . $record->ID;
                     $type = '';
                     break;
 
@@ -143,7 +139,7 @@ class ClamAVBaseTask extends BuildTask
                 break;
 
             case 'error':
-                set_error_handler([$this, 'log_error_handler']);
+                set_error_handler($this->log_error_handler(...));
                 user_error($message, E_USER_WARNING);
                 restore_error_handler();
                 break;
@@ -173,7 +169,7 @@ class ClamAVBaseTask extends BuildTask
      * @param $errline
      * @param $errcontext
      */
-    public function log_error_handler($errno, $errstr, $errfile, $errline, $errcontext)
+    public function log_error_handler($errno, $errstr, $errfile, $errline, $errcontext = null)
     {
         DB::alteration_message($errstr, 'error');
 
@@ -197,7 +193,7 @@ class ClamAVBaseTask extends BuildTask
      * @param int $chunkSize
      *
      * @return bool
-     * @throws \Exception
+     * @throws Exception
      */
     protected function scanListChunked($list, $limit = null, $chunkSize = 100)
     {
@@ -233,7 +229,7 @@ class ClamAVBaseTask extends BuildTask
      * @param DataList $list
      *
      * @return bool
-     * @throws \Exception
+     * @throws Exception
      */
     protected function scanList($list)
     {
@@ -253,7 +249,7 @@ class ClamAVBaseTask extends BuildTask
 
             // scans by a job/task will have an IPAddress of 127.0.0.1
             $originalScan = $file->ClamAVScans()->sort('Created DESC')->first();
-            if (isset($originalScan) && isset($originalScan->IPAddress)) {
+            if ($logRecord && isset($originalScan) && isset($originalScan->IPAddress)) {
                 // replace 127.0.0.1 with original IPAddress
                 $logRecord->IPAddress = $originalScan->IPAddress;
             }

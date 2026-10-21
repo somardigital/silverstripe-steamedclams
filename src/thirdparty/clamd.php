@@ -20,10 +20,7 @@ $EICAR_TEST = 'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H
 
 
 class ClamdSocketException extends Exception {
-    protected $errorCode;
-
-    public function __construct($message, $socketErrorCode) {
-        $this->errorCode = $socketErrorCode;
+    public function __construct($message, protected $errorCode) {
         if (!$message) {
             $message = socket_strerror($this->errorCode);
         }
@@ -76,18 +73,18 @@ abstract class ClamdBase {
 
     /* `fileScan` is used to scan single file. */
     public function fileScan($file) {
-        list($file, $stats) = explode(':', $this->sendCommand('SCAN ' .  $file));
+        [$file, $stats] = explode(':', $this->sendCommand('SCAN ' .  $file));
 
-        return array( 'file' => $file, 'stats' => trim($stats));
+        return [ 'file' => $file, 'stats' => trim($stats)];
     }
 
     /* `continueScan` is used to scan multiple files/directories.  */
     public function continueScan($file) {
-        $return = array();
+        $return = [];
         
         foreach( explode("\n", trim($this->sendCommand('CONTSCAN ' .  $file))) as $results ) {
-            list($file, $stats) = explode(':', $results);
-            array_push($return, array( 'file' => $file, 'stats' => trim($stats) ));
+            [$file, $stats] = explode(':', $results);
+            array_push($return, [ 'file' => $file, 'stats' => trim($stats) ]);
         }
         return $return;
     }
@@ -114,17 +111,15 @@ abstract class ClamdBase {
 
         socket_close($socket);
   
-        return array('stats' => trim(str_replace('stream: ', '', $return)));
+        return ['stats' => trim(str_replace('stream: ', '', $return))];
     }
 }
 
 /* This class can be used to connect to local socket, the default */
 class ClamdPipe extends ClamdBase {
-    private $pip;
-
     /* You need to pass the path to the socket pipe */
-    public function __construct($pip=CLAMD_PIPE) {
-        $this->pip = $pip;
+    public function __construct(private $pip=CLAMD_PIPE)
+    {
     }
 
     protected function getSocket() {
@@ -149,13 +144,9 @@ class ClamdPipe extends ClamdBase {
 
 /* This class can be used to connect to Clamd running over the network */
 class ClamdNetwork extends ClamdBase {
-    private $host;
-    private $port;
-
     /* You need to pass the host address and the port the the server */
-    public function __construct($host=CLAMD_HOST, $port=CLAMD_PORT) {
-        $this->host = $host;
-        $this->port = $port;
+    public function __construct(private $host=CLAMD_HOST, private $port=CLAMD_PORT)
+    {
     }
 
     protected function getSocket() {

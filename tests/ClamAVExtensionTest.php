@@ -2,12 +2,12 @@
 
 namespace Symbiote\SteamedClams;
 
-use SilverStripe\Control\Director;
+use SilverStripe\Core\Validation\ValidationException;
 use SilverStripe\Dev\SapphireTest;
 use Symbiote\SteamedClams\Model\ClamAVScan;
 use SilverStripe\Assets\File;
-use SilverStripe\ORM\ValidationException;
 use SilverStripe\Assets\Dev\TestAssetStore;
+use SilverStripe\Assets\Flysystem\ProtectedAssetAdapter;
 use SilverStripe\Security\BasicAuth;
 use SilverStripe\Core\Config\Config;
 
@@ -15,7 +15,7 @@ class ClamAVExtensionTest extends SapphireTest
 {
     protected $usesDatabase = true;
 
-    public function setUp()
+    protected function setUp(): void
     {
         parent::setUp();
 
@@ -49,7 +49,7 @@ class ClamAVExtensionTest extends SapphireTest
 
         try {
             $record->write();
-        } catch (ValidationException $e) {
+        } catch (ValidationException) {
             //
         }
 
@@ -74,7 +74,7 @@ class ClamAVExtensionTest extends SapphireTest
 
         try {
             $record->write();
-        } catch (ValidationException $e) {
+        } catch (ValidationException) {
             //
         }
 
@@ -101,7 +101,7 @@ class ClamAVExtensionTest extends SapphireTest
 
         try {
             $record->write();
-        } catch (ValidationException $e) {
+        } catch (ValidationException) {
             //
         }
 
@@ -134,7 +134,7 @@ class ClamAVExtensionTest extends SapphireTest
 
         try {
             $record->write();
-        } catch (ValidationException $e) {
+        } catch (ValidationException) {
             //
         }
 
@@ -161,7 +161,7 @@ class ClamAVExtensionTest extends SapphireTest
         $record->Filename = ASSETS_DIR . '/' . $filename;
         try {
             $record->write();
-        } catch (ValidationException $e) {
+        } catch (ValidationException) {
         }
 
         // Ensure the file stays if not denying files

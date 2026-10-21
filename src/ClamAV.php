@@ -2,6 +2,11 @@
 
 namespace Symbiote\SteamedClams;
 
+use ClamdSocketException;
+use ClamdPipe;
+use Exception;
+use SilverStripe\Model\List\ArrayList;
+use ClamdBase;
 use LogicException;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Assets\File;
@@ -12,11 +17,9 @@ use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
 use Symbiote\SteamedClams\Model\ClamAVScan;
-use SilverStripe\Assets\Flysystem\ProtectedAssetAdapter;
 
 class ClamAV
 {
@@ -61,7 +64,7 @@ class ClamAV
     ];
 
     /**
-     * @var \ClamdBase
+     * @var ClamdBase
      */
     protected $clamd_instance = null;
 
@@ -134,8 +137,8 @@ class ClamAV
      */
     public function scanFileForVirus($filepath)
     {
-        $clamdConf = Config::inst()->get(__CLASS__, 'clamd');
-        $localSocket = isset($clamdConf['LocalSocket']) ? $clamdConf['LocalSocket'] : '';
+        $clamdConf = Config::inst()->get(self::class, 'clamd');
+        $localSocket = $clamdConf['LocalSocket'] ?? '';
 
         if (!$localSocket) {
             throw new LogicException('Empty value for "clamd.LocalSocket" config not allowed.');
@@ -184,7 +187,7 @@ class ClamAV
         try {
             $clamd = $this->getClamd();
             $scanResult = $clamd->fileScan($filepath);
-        } catch (\ClamdSocketException $e) {
+        } catch (ClamdSocketException $e) {
             $this->setLastExceptionAndLog($e);
             $scanResult = self::OFFLINE;
         }
@@ -195,7 +198,7 @@ class ClamAV
     /**
      * Return underlying Clamd implementation.
      *
-     * @return \ClamdBase
+     * @return ClamdBase
      */
     protected function getClamd()
     {
@@ -205,9 +208,9 @@ class ClamAV
 
         $result = null;
         if (class_exists(Injector::class)) {
-            $result = Injector::inst()->create(\ClamdPipe::class);
+            $result = Injector::inst()->create(ClamdPipe::class);
         } else {
-            $result = new \ClamdPipe;
+            $result = new ClamdPipe;
         }
 
         return $this->clamd_instance = $result;
@@ -216,7 +219,7 @@ class ClamAV
     /**
      * Set exception, if it has a non-falsey value, log it.
      */
-    protected function setLastExceptionAndLog(\Exception $e)
+    protected function setLastExceptionAndLog(Exception $e)
     {
         if ($e) {
             Injector::inst()->get(LoggerInterface::class)->warning('Query executed: ' . $e->getMessage());
@@ -231,7 +234,7 @@ class ClamAV
      */
     protected function getIP()
     {
-        if (!Controller::has_curr()) {
+        if (Controller::curr() === null) {
             if (Director::is_cli()) {
                 // If running from command line, you can assume it's
                 // the local machine.
@@ -282,7 +285,7 @@ class ClamAV
         $excludeFileIDs = array_unique($excludeFileIDs);
         $list = $this->getBaseFileList();
         if (!$list) {
-            return new Arraylist();
+            return new ArrayList();
         }
 
         if (!empty($excludeFileIDs)) {
@@ -290,7 +293,7 @@ class ClamAV
                 'ID:not' => $excludeFileIDs,
             ]);
         }
-        $ignoreBeforeDatetime = Config::inst()->get(__CLASS__, 'initial_scan_ignore_before_datetime');
+        $ignoreBeforeDatetime = Config::inst()->get(self::class, 'initial_scan_ignore_before_datetime');
         if ($ignoreBeforeDatetime) {
             $list = $list->filter([
                 'Created:GreaterThanOrEqual' => $ignoreBeforeDatetime,
@@ -370,7 +373,7 @@ class ClamAV
             $clamd = $this->getClamd();
 
             $version = $clamd->version();
-        } catch (\ClamdSocketException $e) {
+        } catch (ClamdSocketException $e) {
             $this->setLastExceptionAndLog($e);
             $version = self::OFFLINE;
         }
