@@ -553,7 +553,10 @@ class ClamAVScan extends DataObject
     {
         if (is_array($value)) {
             $value = json_encode($value);
+        } elseif (!is_string($value)) {
+            $value = null;
         }
+
         $this->setField('RawData', $value);
     }
 
